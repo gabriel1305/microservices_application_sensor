@@ -1,0 +1,19 @@
+
+server:
+  port: 8083
+
+spring:
+  application:
+    name: alert-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

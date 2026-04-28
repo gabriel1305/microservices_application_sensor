@@ -55,7 +55,7 @@ class TemperatureHistory {
     @Column(name = "sensor_id")
     private String sensorId;
 
-    @Column(name = "temperature")
+    @Column(name = "temp_value")
     private Double temperature;
 
     @Column(name = "timestamp")

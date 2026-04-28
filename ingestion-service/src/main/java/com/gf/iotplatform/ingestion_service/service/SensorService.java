@@ -1,6 +1,9 @@
 package com.gf.iotplatform.ingestion_service.service;
 
 import com.gf.iotplatform.ingestion_service.model.SensorData;
+
+import java.util.Locale;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,13 +25,14 @@ public class SensorService {
 
         // 🔥 Agora você publica o EVENTO, não o alerta
         String message = String.format(
+            Locale.US,
             "{\"sensorId\":\"%s\",\"temperature\":%.2f,\"timestamp\":%d}",
             data.getSensorId(),
             data.getTemperature(),
-            data.getTimestamp()
+            data.getTimestamp() 
         );
 
         // 🚀 Envia para o tópico
-        temperaturePublisher.sendTemperature(message);
+        temperaturePublisher.sendTemperature(data);
     }
 }

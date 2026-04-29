@@ -5,6 +5,7 @@ import java.net.URL;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Locale;
+import java.util.UUID;
 
 public class Main {
 
@@ -24,7 +25,6 @@ class Sensor implements Runnable {
 
     private final String sensorId;
     private final Random random = new Random();
-    private final String correlationId = java.util.UUID.randomUUID().toString();
 
     public Sensor(String sensorId) {
         this.sensorId = sensorId;
@@ -50,16 +50,19 @@ class Sensor implements Runnable {
 
     private void sendData(double temperature) {
         try {
+            
+            String correlationId = UUID.randomUUID().toString();
+
             URL url = new java.net.URI("http://localhost:8081/ingestion/sensors").toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
             conn.setRequestMethod("POST");
-            /*conn.setRequestProperty("X-Correlation-ID", java.util.UUID.randomUUID().toString()); */
-            conn.setRequestProperty("X-Correlation-ID", correlationId);
+            conn.setRequestProperty("X-Correlation-ID", correlationId); // ✅ Header correto
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
 
             long timestamp = System.currentTimeMillis();
+
             String json = String.format(
                 Locale.US,
                 "{\"sensorId\":\"%s\",\"temperature\":%.2f,\"timestamp\":%d}",
@@ -67,18 +70,12 @@ class Sensor implements Runnable {
                 temperature,
                 timestamp
             );
-            /*String json = """
-            {
-                "sensorId": "%s",
-                "temperature": %.2f,
-                "timestamp": %d
-            }
-            """.formatted(sensorId, temperature, timestamp);*/
 
-            OutputStream os = conn.getOutputStream();
-            os.write(json.getBytes());
-            os.flush();
-            os.close();
+            // 📤 Envio do payload
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes());
+                os.flush();
+            }
 
             int response = conn.getResponseCode();
 
@@ -86,10 +83,16 @@ class Sensor implements Runnable {
                     ? conn.getInputStream()
                     : conn.getErrorStream();
 
-            Scanner sc = new Scanner(is).useDelimiter("\\A");
-            String resp = sc.hasNext() ? sc.next() : "";
+            String resp;
+            try (Scanner sc = new Scanner(is).useDelimiter("\\A")) {
+                resp = sc.hasNext() ? sc.next() : "";
+            }
 
-            System.out.println("[" + sensorId + "] HTTP: " + response + " | Resp: " + resp);
+            System.out.println(
+                "[" + sensorId + "] " +
+                "[correlationId=" + correlationId + "] " +
+                "HTTP: " + response + " | Resp: " + resp
+            );
 
             conn.disconnect();
 

@@ -38,3 +38,4 @@ volumes:
   grafana-data:
   prometheus-data:
   loki-data:
+  logs-data: 

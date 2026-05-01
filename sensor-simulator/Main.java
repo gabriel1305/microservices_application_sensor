@@ -32,7 +32,7 @@ class Sensor implements Runnable {
 
     @Override
     public void run() {
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 500; i++) {
             try {
                 double temperature = 20 + (40 - 20) * random.nextDouble();
 
@@ -49,55 +49,72 @@ class Sensor implements Runnable {
     }
 
     private void sendData(double temperature) {
+        HttpURLConnection conn = null;
+
         try {
-            
             String correlationId = UUID.randomUUID().toString();
 
-            URL url = new java.net.URI("http://localhost:8081/ingestion/sensors").toURL();
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            // ✅ URL correta via variável de ambiente (Docker)
+            String baseUrl = System.getenv().getOrDefault(
+                    "API_URL",
+                    "http://api-gateway:8081"
+            );
+
+            URL url = new URL(baseUrl + "/ingestion/sensors");
+
+            conn = (HttpURLConnection) url.openConnection();
 
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("X-Correlation-ID", correlationId); // ✅ Header correto
-            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            conn.setRequestProperty("X-Correlation-ID", correlationId);
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setDoOutput(true);
 
             long timestamp = System.currentTimeMillis();
 
             String json = String.format(
-                Locale.US,
-                "{\"sensorId\":\"%s\",\"temperature\":%.2f,\"timestamp\":%d}",
-                sensorId,
-                temperature,
-                timestamp
+                    Locale.US,
+                    "{\"sensorId\":\"%s\",\"temperature\":%.2f,\"timestamp\":%d}",
+                    sensorId,
+                    temperature,
+                    timestamp
             );
 
-            // 📤 Envio do payload
+            // 📤 envia payload
             try (OutputStream os = conn.getOutputStream()) {
-                os.write(json.getBytes());
+                os.write(json.getBytes("UTF-8"));
                 os.flush();
             }
 
-            int response = conn.getResponseCode();
+            int responseCode = conn.getResponseCode();
 
-            InputStream is = (response >= 200 && response < 300)
+            InputStream is = (responseCode >= 200 && responseCode < 300)
                     ? conn.getInputStream()
                     : conn.getErrorStream();
 
-            String resp;
-            try (Scanner sc = new Scanner(is).useDelimiter("\\A")) {
-                resp = sc.hasNext() ? sc.next() : "";
+            String responseBody = "";
+            if (is != null) {
+                try (Scanner sc = new Scanner(is).useDelimiter("\\A")) {
+                    responseBody = sc.hasNext() ? sc.next() : "";
+                }
             }
 
             System.out.println(
-                "[" + sensorId + "] " +
-                "[correlationId=" + correlationId + "] " +
-                "HTTP: " + response + " | Resp: " + resp
+                    "[" + sensorId + "] " +
+                    "[correlationId=" + correlationId + "] " +
+                    "POST " + url +
+                    " | HTTP: " + responseCode +
+                    " | Resp: " + responseBody
             );
-
-            conn.disconnect();
 
         } catch (Exception e) {
             System.out.println("Erro ao enviar: " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
 }

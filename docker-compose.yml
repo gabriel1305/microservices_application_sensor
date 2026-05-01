@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+
+  # ========================
+  # OBSERVABILIDADE
+  # ========================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: always
+    networks:
+      - app-network
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: always
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    restart: always
+    networks:
+      - app-network
+
+  # ========================
+  # INFRA
+  # ========================
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: sensordb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d sensordb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  # ========================
+  # MICROSERVIÇOS
+  # ========================
+
+  ingestion-service:
+    build: ./ingestion-service
+    container_name: ingestion-service
+    ports:
+      - "8080:8081"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  historical-temp-service:
+    build: ./historical-temp-service
+    container_name: historical-temp-service
+    ports:
+      - "8084:8081"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/sensordb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+    volumes:
+      - logs-data:/logs
+    networks:
+      - app-network
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8081:8081"
+    depends_on:
+      ingestion-service:
+        condition: service_started
+      historical-temp-service:
+        condition: service_started
+    networks:
+      - app-network
+
+  sensor-simulator:
+    build: ./sensor-simulator
+    container_name: sensor-simulator
+    depends_on:
+      api-gateway:
+        condition: service_started
+    environment:
+      API_URL: http://api-gateway:8081
+    networks:
+      - app-network
+
+# ========================
+# VOLUMES
+# ========================
+
+volumes:
+  grafana-data:
+  prometheus-data:
+  loki-data:
+  logs-data:
+  postgres-data:
+
+# ========================
+# NETWORK
+# ========================
+
+networks:
+  app-network:
+    driver: bridge

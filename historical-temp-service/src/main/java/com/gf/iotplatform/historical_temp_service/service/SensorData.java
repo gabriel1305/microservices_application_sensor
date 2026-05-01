@@ -14,7 +14,7 @@ class SensorData {
 
     private String sensorId;
     private Double temperature;
-    private Long timestamp;
+    private Long eventTimestamp;
 
     public String getSensorId() {
         return sensorId;
@@ -32,12 +32,12 @@ class SensorData {
         this.temperature = temperature;
     }
 
-    public Long getTimestamp() {
-        return timestamp;
+    public Long getEventTimestamp() {
+        return eventTimestamp;
     }
 
-    public void setTimestamp(Long timestamp) {
-        this.timestamp = timestamp;
+    public void setEventTimestamp(Long eventTimestamp) {
+        this.eventTimestamp = eventTimestamp;
     }
 }
 
@@ -52,14 +52,14 @@ class TemperatureHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "sensor_id")
+    @Column(name = "sensor_id", nullable = false)
     private String sensorId;
 
-    @Column(name = "temp_value")
+    @Column(name = "temp_value", nullable = false)
     private Double temperature;
 
-    @Column(name = "timestamp")
-    private Long timestamp;
+    @Column(name = "event_timestamp", nullable = false)
+    private Long eventTimestamp;
 
     public Long getId() {
         return id;
@@ -73,8 +73,8 @@ class TemperatureHistory {
         return temperature;
     }
 
-    public Long getTimestamp() {
-        return timestamp;
+    public Long getEventTimestamp() {
+        return eventTimestamp;
     }
 
     public void setSensorId(String sensorId) {
@@ -85,8 +85,8 @@ class TemperatureHistory {
         this.temperature = temperature;
     }
 
-    public void setTimestamp(Long timestamp) {
-        this.timestamp = timestamp;
+    public void setEventTimestamp(Long eventTimestamp) {
+        this.eventTimestamp = eventTimestamp;
     }
 }
 
@@ -122,7 +122,15 @@ class TemperatureConsumer {
         TemperatureHistory entity = new TemperatureHistory();
         entity.setSensorId(data.getSensorId());
         entity.setTemperature(data.getTemperature());
-        entity.setTimestamp(data.getTimestamp());
+
+        // 🔥 CORREÇÃO PRINCIPAL AQUI
+        Long timestamp = data.getEventTimestamp();
+
+        if (timestamp == null) {
+            timestamp = System.currentTimeMillis(); // fallback seguro
+        }
+
+        entity.setEventTimestamp(timestamp);
 
         repository.save(entity);
 

@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 8081
 
 spring:
   application:
@@ -24,13 +24,32 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
 
 logging:
   file:
-    name: logs/app.log
+    name: /logs/app.log
+  level:
+    org.hibernate.SQL: DEBUG
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: health,metrics,prometheus
+
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+  prometheus:
+    metrics:
+      export:
+        enabled: true

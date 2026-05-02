@@ -3,6 +3,10 @@ global:
 
 scrape_configs:
 
+  # ========================
+  # SPRING BOOT MICROSERVICES
+  # ========================
+
   - job_name: "api-gateway"
     metrics_path: "/actuator/prometheus"
     static_configs:
@@ -13,12 +17,16 @@ scrape_configs:
     static_configs:
       - targets: ["ingestion-service:8080"]
 
-  - job_name: "alert-service"
-    metrics_path: "/actuator/prometheus"
-    static_configs:
-      - targets: ["alert-service:8080"]
-
   - job_name: "historical-temp-service"
     metrics_path: "/actuator/prometheus"
     static_configs:
       - targets: ["historical-temp-service:8084"]
+
+  # ========================
+  # RABBITMQ (PLUGIN NATIVO)
+  # ========================
+
+  - job_name: "rabbitmq"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["rabbitmq:15692"]

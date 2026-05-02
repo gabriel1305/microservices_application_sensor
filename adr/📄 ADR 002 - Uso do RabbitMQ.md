@@ -94,14 +94,6 @@ Foi adotado o **RabbitMQ** como sistema de mensageria.
 
 ---
 
-## Indicadores
-
-- Taxa de publicação: 18.3 mensagens/min
-- Sistema operando sem perda de mensagens
-- Processamento assíncrono eficiente
-
----
-
 ## Consequências
 
 - Sistema desacoplado

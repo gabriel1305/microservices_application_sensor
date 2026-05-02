@@ -134,7 +134,6 @@ Credenciais padrão:
 * usuário: `admin`
 * senha: `admin`
 
-Dashboards-> New dashboard
 ---
 
 ### 📊 Dashboards
